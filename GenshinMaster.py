@@ -1,5 +1,4 @@
 from asyncio import events
-from os import wait
 import discord
 from discord import message
 from discord import player
@@ -14,18 +13,23 @@ import genshinstats as gs
 import time
 from genshinstats.genshinstats import generate_cn_ds
 from prettytable import *
-import csv
 import mysql
 import mysql.connector
 from mysql.connector import Error
+import time
+import datetime
+from datetime import *
+from datetime import timedelta
+import pytz
+from pytz import UTC
 
 SQLhost='localhost'
 SQLuser='SA'
 SQLpassword='password'
 SQLdatabase='GenshinMaster'
 
-ltuid=126239591
-ltoken="y3sTjYmk68fnL7xVwOukbn1jiqzw0RKgJT1t6w84"
+ltuid=41551142
+ltoken="NBw3eAmY02PUnEn9m0uNY6hpl7UmY98AiIX9NDA5"
 
 client = commands.Bot(command_prefix = '.')
 DiscordComponents(client)
@@ -33,7 +37,7 @@ buttons = ButtonsClient(client)
 
 #РЕГИСТРАЦИЯ___________________________________________________________________________
 @client.command()
-async def login(ctx):
+async def register(ctx):
     #await ctx.reply('https://media.discordapp.net/attachments/907163041852977194/908391673623629854/predlagau.gif')
     await ctx.reply('Укажите ltuid:')
     userid = ctx.author.id
@@ -88,14 +92,22 @@ async def resin(ctx, *, uid):
         )
         cursor = connection.cursor()
         userid = ctx.author.id
-        cursor.execute("SELECT * FROM sud WHERE id='%s'" % (userid))
+        cursor.execute("SELECT * FROM User WHERE DiscordID='%s'" % (userid))
         rows = cursor.fetchall()
         for row in rows:
             ltuid = row[1]
             ltoken = row[2]
         gs.set_cookie(ltuid=ltuid, ltoken=ltoken)
         notes = gs.get_notes(uid)
-        await ctx.channel.send(f"Current resin: {notes['resin']}/{notes['max_resin']}")
+        timeserver=datetime.now(UTC) \
+        .astimezone(pytz.timezone('Europe/Moscow'))
+        time_change = (notes['max_resin'] - notes['resin']) * 8
+        time_change_hour = 0
+        while time_change > 60:
+            time_change = time_change - 60
+            time_change_hour += 1
+        timeresin = timeserver + timedelta(hours=time_change_hour,minutes=time_change)
+        await ctx.channel.send(f"Current resin: {notes['resin']}/{notes['max_resin']}/time to max {timeresin.day}-{timeresin.month} {timeresin.hour}:{timeresin.minute}:{timeresin.second}")
     except Error as e:
         print(f"The error '{e}' occurred")
 
@@ -111,8 +123,6 @@ async def characters(ctx, *, uid):
         name = char['name']
         level = char['level']
         const = char['constellation']
-        #print(f"{char['rarity']}* {char['name']:10} | lvl {char['level']:2} C{char['constellation']}")
-        #characters_list.append(f'["{rarity}", "{name}", "{level}", "{const}"]')
         characters_list.add_row([rarity,name,level,const])
     await ctx.channel.send('`' + str(characters_list) + '`')
 
@@ -142,7 +152,7 @@ async def abyss(ctx, *, uid):
 
 #ЕЖЕДНЕВКА ФОРУМ___________________________________________________________________________
 @client.command()
-async def rewaind(ctx):
+async def reward(ctx):
     try:
         connection = mysql.connector.connect(
             host=SQLhost,
@@ -253,61 +263,41 @@ async def wish(ctx):
 @client.command()
 async def menu(ctx):
     await buttons.send(
-	    content = "This is an example message!", 
-	    channel = ctx.channel.id,
-	    components = [
-	    	ActionRow([
-		    	Button(
-			    	label="Register", 
-				    style=ButtonType().Primary, 
-				    custom_id="reg"       
-			    ),
+        content = "This is an example message!", 
+        channel = ctx.channel.id,
+        components = [
+            ActionRow([
                 Button(
-			    	label="Resin", 
-				    style=ButtonType().Primary, 
-				    custom_id="resin"       
-			    ),
+                    label="Resin", 
+                    style=ButtonType().Primary, 
+                    custom_id="resin"       
+                ),
                 Button(
-			    	label="characters", 
-				    style=ButtonType().Primary, 
-				    custom_id="characters"       
-			    ),
+                    label="Characters", 
+                    style=ButtonType().Primary, 
+                    custom_id="characters"       
+                ),
                 Button(
-			    	label="Stats", 
-				    style=ButtonType().Primary, 
-				    custom_id="stats"       
-			    )
-		    ])
-	    ]
+                    label="Stats", 
+                    style=ButtonType().Primary, 
+                    custom_id="stats"       
+                ),
+                Button(
+                    label="Abyss", 
+                    style=ButtonType().Primary, 
+                    custom_id="Abyss"       
+                ),
+                Button(
+                    label="Auto daily", 
+                    style=ButtonType().Primary, 
+                    custom_id="dailyswitch"       
+                )
+            ])
+        ]
     )
 
 @buttons.click
-async def reg(ctx):
-    channel = client.get_channel(ctx.member.id)
-    await channel.send('test')
-    """userid = ctx.member.id
-    def check(q):
-        return q.author.id == userid
-    msg = await client.wait_for('message', check=check)
-    ltuid = str(msg.content)
-
-    await ctx.reply('Укажите ltoken:')
-    userid = ctx.author.id
-    def check(q):
-        return q.author.id == userid
-    msg = await client.wait_for('message', check=check)
-    ltoken = str(msg.content)
-
-    await ctx.reply('Укажите wish:')
-    userid = ctx.author.id
-    def check(q):
-        return q.author.id == userid
-    msg = await client.wait_for('message', check=check)
-    wish = str(msg.content)
-
-    #await ctx.reply('https://media.discordapp.net/attachments/907163041852977194/908392371690041385/sosage.gif')
-    await ctx.reply('LOADING...')
-
+async def dailyswitch(ctx):
     try:
         connection = mysql.connector.connect(
             host=SQLhost,
@@ -316,15 +306,109 @@ async def reg(ctx):
             database=SQLdatabase
         )
         cursor = connection.cursor()
-        try:
-            sql = f'''INSERT INTO User (DiscordID, ltuid, ltoken, wish) VALUES ("{userid}", "{ltuid}", "{ltoken}", "{wish}")'''
-            cursor.execute(sql)
-            connection.commit()
-        except Exception as e:
-            print(f"The error '{e}' occurred")
+        userid = ctx.member.id
+        cursor.execute("SELECT daily FROM User WHERE DiscordID='%s'" % (userid))
+        rows = cursor.fetchall()
+        for row in rows:
+            daily = row[0]
+        print(daily)
+        if daily == 0:
+            cursor.execute("UPDATE User SET daily = '1' WHERE DiscordID = '%s'" % (userid))
+            await ctx.reply('Update')
+        else:
+            cursor.execute("UPDATE User SET daily = '0' WHERE DiscordID = '%s'" % (userid))
+            await ctx.reply('Update')
+        connection.commit()
+    except Error as e:
+        await interaction.send(e)
+        print((f"The error '{e}' occurred"))
+
+@buttons.click
+async def resin(ctx):
+    try:
+        connection = mysql.connector.connect(
+            host=SQLhost,
+            user=SQLuser,
+            password=SQLpassword,
+            database=SQLdatabase
+        )
+        cursor = connection.cursor()
+        await ctx.reply('Укажите uid:')
+        userid = ctx.member.id
+        def check(q):
+            return q.author.id == userid
+        msg = await client.wait_for('message', check=check)
+        uid = str(msg.content)
+        cursor.execute("SELECT * FROM User WHERE DiscordID='%s'" % (userid))
+        rows = cursor.fetchall()
+        for row in rows:
+            ltuid = row[1]
+            ltoken = row[2]
+        gs.set_cookie(ltuid=ltuid, ltoken=ltoken)
+        notes = gs.get_notes(uid)
+        timeserver=datetime.now(UTC) \
+        .astimezone(pytz.timezone('Europe/Moscow'))
+        time_change = (notes['max_resin'] - notes['resin']) * 8
+        time_change_hour = 0
+        while time_change > 60:
+            time_change = time_change - 60
+            time_change_hour += 1
+        timeresin = timeserver + timedelta(hours=time_change_hour,minutes=time_change)
+        await ctx.channel.send(f"Current resin: {notes['resin']}/{notes['max_resin']}/time to max {timeresin.day}-{timeresin.month} {timeresin.hour}:{timeresin.minute}:{timeresin.second}")
     except Error as e:
         print(f"The error '{e}' occurred")
-"""
-client.run('ODQzMDUxOTI5MTE3NjU1MDUx.YJ-PSw.FB0XcGwkWj9VWaAkMpSIQxxOXws')
 
-#https://youtu.be/14XYntpP9W0?t=938
+@buttons.click
+async def characters(ctx):
+    await ctx.reply('Укажите uid:')
+    def check(q):
+        return q.author.id == userid
+    msg = await client.wait_for('message', check=check)
+    uid = str(msg.content)
+    gs.set_cookie(ltuid=ltuid, ltoken=ltoken)
+    characters = gs.get_characters(uid)
+    characters_list = PrettyTable()
+    characters_list.field_names=(['rarity','name','lvl','const'])
+    for char in characters:
+        rarity = char['rarity']
+        name = char['name']
+        level = char['level']
+        const = char['constellation']
+        characters_list.add_row([rarity,name,level,const])
+    await ctx.channel.send('`' + str(characters_list) + '`')
+
+@buttons.click
+async def stats(ctx):
+    await ctx.reply('Укажите uid:')
+    userid = ctx.member.id
+    def check(q):
+        return q.author.id == userid
+    msg = await client.wait_for('message', check=check)
+    uid = str(msg.content)
+    gs.set_cookie(ltuid=ltuid, ltoken=ltoken)
+    stats = gs.get_user_stats(uid)['stats']
+    player_stats = PrettyTable()
+    player_stats.field_names=(['stats user:', uid])
+    for field, value in stats.items():
+        #print(f"{field}: {value}")
+        player_stats.add_row([field,value])
+    await ctx.channel.send('`' + str(player_stats) + '`')
+
+@buttons.click
+async def abyss(ctx):
+    await ctx.reply('Укажите uid:')
+    userid = ctx.member.id
+    def check(q):
+        return q.author.id == userid
+    msg = await client.wait_for('message', check=check)
+    uid = str(msg.content)
+    gs.set_cookie(ltuid=ltuid, ltoken=ltoken)
+    spiral_abyss = gs.get_spiral_abyss(uid)
+    stats = spiral_abyss['stats']
+    abyss_stats = PrettyTable()
+    abyss_stats.field_names=(['abyss user', str(uid)])
+    for field, value in stats.items():
+        abyss_stats.add_row([field, value])
+    await ctx.channel.send('`' + str(abyss_stats) + '`')
+
+client.run('ODQzMDUxOTI5MTE3NjU1MDUx.YJ-PSw.FB0XcGwkWj9VWaAkMpSIQxxOXws')
