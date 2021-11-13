@@ -112,7 +112,7 @@ async def resin(ctx, *, uid):
         font = ImageFont.truetype('zh-cn.ttf',33)
         img = Image.open('sample.png')
         draw = ImageDraw.Draw(img)
-        draw.text(xy=(64, 12),text=f"160/160",fill=(255,255,255),font=font)
+        draw.text(xy=(64, 12),text=f"{notes['resin']}/{notes['max_resin']}",fill=(255,255,255),font=font)
         img.save('resin.png', quality=100, subsampling=0)
         await ctx.channel.send(f"Time to max {timeresin.day}.{timeresin.month} {timeresin.hour}:{timeresin.minute}:{timeresin.second}", file=discord.File('resin.png'))
     except Error as e:
