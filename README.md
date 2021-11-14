@@ -1,6 +1,6 @@
 # GenshinMaster
 | Command | Description |
-|:----------------:|:----------------:|
+|:----------------:|:----------------|
 | .register | For registration in system. Need for reward and auto reward system. Also if the profile is closed need for taking stats. |
 | .menu | This is a bot menu made on buttons. For those who don't like to write commands. |
 | .wish | Showing wish history and calculate. |
