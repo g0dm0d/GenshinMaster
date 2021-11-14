@@ -1,6 +1,6 @@
 # Help me
 
-* Send the !help to see all the commands
+* Send the .help to see all the commands
 
 ![help](img/help1.png)
 
