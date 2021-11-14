@@ -8,4 +8,4 @@
 
 ![reg](img/reg2.png)
 
-![](http://i.imgur.com/OUkLi.gif)
+![](http://168.63.69.38/instruction.gif)
