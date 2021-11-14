@@ -7,3 +7,5 @@
 * registration requires cookies to access statistics. More details are shown in the gif animation attached to the command
 
 ![reg](img/reg2.png)
+
+![reggif](http://168.63.69.38/instruction.gif)
