@@ -4,7 +4,7 @@
 
 ![help](img/help1.png)
 
-to learn more about the command, select it in the drop down menu
+* to learn more about the command, select it in the drop down menu
 
 ![help](img/help2.png)
 
